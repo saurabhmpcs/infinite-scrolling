@@ -1,8 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
+import useBookSearch from "./useBookSearch";
 
 function App() {
   const [query, setQuery] = useState("");
-  const [pageNunmber, setPageNumber] = useState(1);
+  const [pageNumber, setPageNumber] = useState(1);
+
+  const { books, hasMore, loading, error } = useBookSearch(query, pageNumber);
+
+  const observer = useRef();
+  const lastBookELementRef = useCallback(
+    (node) => {
+      if (loading) return;
+      if (observer.current) observer.current.disconnect();
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPageNumber((prevPageNumber) => prevPageNumber + 1);
+        }
+      });
+      if (node) observer.current.observe(node);
+    },
+    [loading, hasMore]
+  );
 
   function handleSearch(e) {
     setQuery(e.target.value);
@@ -11,13 +29,21 @@ function App() {
 
   return (
     <>
-      <input type="text" onChange={handleSearch}></input>
-      <div>Title</div>
-      <div>Title</div>
-      <div>Title</div>
-      <div>Title</div>
-      <div>Loading...</div>
-      <div>Error</div>
+      <input type="text" value={query} onChange={handleSearch}></input>
+      {books.map((book, index) => {
+        if (books.length === index + 1) {
+          return (
+            <div ref={lastBookELementRef} key={book}>
+              {book}
+            </div>
+          );
+        }
+
+        return <div key={book}>{book}</div>;
+      })}
+
+      <div>{loading && "Loading"}</div>
+      <div>{error && "Error"}</div>
     </>
   );
 }
